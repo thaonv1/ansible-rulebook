@@ -1,0 +1,55 @@
+---
+- name: deletevm
+  hosts: localhost
+  gather_facts: false
+  become: true
+  vars:
+    vcenter_hostname: "vcenter.vlware.local"
+    vcenter_username: "administrator@vsphere.local"
+    vcenter_password: "Suncloud@2022"
+    datacenter_name: "VLWAREDC"
+    netbox_url: "10.0.11.153"
+    netbox_token: "c3d7745c37bc7799cc8f4b86e6fb0a12bc0039c3"
+    vm_name: "{{ vm.name }}"
+  tasks:
+  - name: delete vm
+    community.vmware.vmware_guest:
+      hostname: "{{ vcenter_hostname }}"
+      username: "{{ vcenter_username }}"
+      password: "{{ vcenter_password }}"
+      validate_certs: false
+      folder: "{{ datacenter_name }}"
+      name: "{{ vm_name }}"
+      state: absent
+    delegate_to: localhost
+    register: deploy
+  - name: Get ID of virtual machine
+    uri:
+      url: "https://{{netbox_url}}/api/virtualization/virtual-machines/?name={{ vm_name }}"
+      method: GET
+      validate_certs: no
+      return_content: yes
+      headers:
+        Accept: application/json
+        Authorization: Token {{netbox_token}}
+    register: vm_id
+    delegate_to: localhost
+  - name: Update journal
+    uri:
+      url: "https://{{netbox_url}}/api/extras/journal-entries/"
+      method: POST
+      validate_certs: no
+      body_format: json
+      return_content: true
+      headers:
+        Authorization: "Token {{ netbox_token }}"
+        Accept: "application/json"
+      body:
+        assigned_object_type: "virtualization.virtualmachine"
+        assigned_object_id: "{{vm_id.json.results[0].id}}"
+        kind: "danger"
+        comments: "delete from netbox admin"
+      status_code:
+        - 201
+        - 208
+    delegate_to: localhost

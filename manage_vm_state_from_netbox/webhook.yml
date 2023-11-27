@@ -1,0 +1,23 @@
+- name: Rulebook to manage virtual machines.
+  hosts: all
+
+  sources:
+    - ansible.eda.webhook:
+        host: 0.0.0.0
+        port: 5000
+
+  rules:
+    - name: Poweron virtual machine
+      condition: event.payload.event == "updated" and event.payload.model == "virtualmachine" and event.payload.data.status.value == "offline"
+      action:
+        run_playbook:
+          name: shutdownvm.yml
+          extra_vars:
+            vm: "{{ event.payload.data }}"
+    - name: Delete vm
+      condition: event.payload.event == "updated" and event.payload.model == "virtualmachine" and event.payload.data.status.value == "decommissioning"
+      action:
+        run_playbook:
+          name: decommissioning_vm.yml
+          extra_vars:
+            vm: "{{ event.payload.data }}"
