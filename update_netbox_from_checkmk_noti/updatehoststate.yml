@@ -1,0 +1,52 @@
+---
+- name: update host vm
+  hosts: localhost
+  gather_facts: false
+  become: true
+  vars:
+    netbox_url: "10.0.11.153"
+    netbox_token: "c3d7745c37bc7799cc8f4b86e6fb0a12bc0039c3"
+    ip: "{{ noti.address }}"
+    message: "{{ noti.message }}"
+  tasks:
+  - name: Get ip address
+    uri:
+      url: "https://{{netbox_url}}/api/ipam/ip-addresses/?address={{ ip }}"
+      method: GET
+      return_content: yes
+      validate_certs: no
+      headers:
+        Accept: application/json
+        Authorization: Token {{netbox_token}}
+    register: ipaddressvm
+    delegate_to: localhost
+  - name: Get ID of virtual machine
+    uri:
+      url: "https://{{netbox_url}}/api/virtualization/virtual-machines/?name={{ ipaddressvm.json.results[0].assigned_object.virtual_machine.name }}"
+      method: GET
+      validate_certs: no
+      return_content: yes
+      headers:
+        Accept: application/json
+        Authorization: Token {{netbox_token}}
+    register: vm_id
+    delegate_to: localhost
+  - name: Update journal
+    uri:
+      url: "https://{{netbox_url}}/api/extras/journal-entries/"
+      method: POST
+      validate_certs: no
+      body_format: json
+      return_content: true
+      headers:
+        Authorization: "Token {{ netbox_token }}"
+        Accept: "application/json"
+      body:
+        assigned_object_type: "virtualization.virtualmachine"
+        assigned_object_id: "{{vm_id.json.results[0].id}}"
+        kind: "{{ 'danger' if noti.state == 'DOWN' or 'CRIT' else 'info' }}"
+        comments: "{{ message }}"
+      status_code:
+        - 201
+        - 208
+    delegate_to: localhost

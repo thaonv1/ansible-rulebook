@@ -1,0 +1,37 @@
+- name: Rulebook to update virtual machines.
+  hosts: all
+
+  sources:
+    - ansible.eda.webhook:
+        host: 0.0.0.0
+        port: 5000
+
+  rules:
+    - name: VM host noti down
+      condition: event.payload.serviceorhost == "HOST" and event.payload.state == "DOWN"
+      action:
+        run_playbook:
+          name: updatehoststate.yml
+          extra_vars:
+            noti: "{{ event.payload }}"
+    - name: VM host noti up
+      condition: event.payload.serviceorhost == "HOST" and event.payload.state == "UP"
+      action:
+        run_playbook:
+          name: updatehoststate.yml
+          extra_vars:
+            noti: "{{ event.payload }}"
+    - name: VM service noti crit
+      condition: event.payload.serviceorhost == "SERVICE" and event.payload.state == "CRIT"
+      action:
+        run_playbook:
+          name: updatehoststate.yml
+          extra_vars:
+            noti: "{{ event.payload }}"
+    - name: VM service noti ok
+      condition: event.payload.serviceorhost == "SERVICE" and event.payload.state == "OK"
+      action:
+        run_playbook:
+          name: updatehoststate.yml
+          extra_vars:
+            noti: "{{ event.payload }}"
