@@ -1,0 +1,44 @@
+---
+- hosts: localhost
+  connection: local
+  gather_facts: no
+
+  tasks:
+    - name: debug
+      debug:
+        msg: "{{ ansible_eda.event.machine }}"
+    - name: Sdd hosts from extra-vars to "temp" group
+      add_host:
+        groups: temp
+        name: "{{ item }}"
+      loop: "{{ ansible_eda.event.machine }}"
+
+- name: Backup Switch
+  hosts: temp
+  gather_facts: false
+  tasks:
+  - name: configurable backup path
+    copy:
+      src: /etc/resolv.conf
+      dest: /tmp/resolv.conf
+      owner: root
+      group: root
+      mode: '0644'
+
+- name: Regex Processing for hostnames
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Send notification message via Mattermost
+      uri:
+        url: http://10.0.11.67:8065/hooks/p6uraw4o4ift8nh6fibpj8f4ic
+        method: POST
+        validate_certs: no
+        body_format: json
+        return_content: true
+        headers:
+          Accept: "application/json"
+        body:
+          text: "Da backup xong file"
+      delegate_to: localhost
