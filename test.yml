@@ -6,3 +6,7 @@
   tasks:
     - name: Check Memory Usage
       command: free
+      register: print_memory_usage
+
+    - debug:
+        var: print_memory_usage.stdout_lines
